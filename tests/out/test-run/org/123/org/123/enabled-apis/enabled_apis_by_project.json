@@ -1,0 +1,9 @@
+[
+  {
+    "apis": [
+      "compute.googleapis.com",
+      "iam.googleapis.com"
+    ],
+    "projectId": "proj-root"
+  }
+]

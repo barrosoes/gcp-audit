@@ -1,0 +1,22 @@
+{
+  "folders": [
+    {
+      "name": "folders/100",
+      "parent": "organizations/123"
+    },
+    {
+      "name": "folders/110",
+      "parent": "folders/100"
+    }
+  ],
+  "organization": {
+    "orgId": "123"
+  },
+  "projects": [
+    {
+      "parentId": "123",
+      "parentType": "organization",
+      "projectId": "proj-root"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+2026-02-21T21:58:41Z [INFO] Run root: /home/barroso/Downloads/ESTUDOS-CLOUD-DEVOPS/ESTUDOS-KUBERNETS/DEVOPSGUIDE/gcp-audit/tests/out/test-run/org/123
+2026-02-21T21:58:41Z [INFO] Using gcloud account: auditor@example.com
+2026-02-21T21:58:41Z [INFO] Google Cloud SDK 999.0.0
+2026-02-21T21:58:41Z [INFO] Discovering folders (recursive)...
+2026-02-21T21:58:41Z [INFO] Discovering projects under org root...
+2026-02-21T21:58:41Z [INFO] Discovering projects under folders...
+2026-02-21T21:58:41Z [INFO] Discovery complete: folders=1 projects=1
+2026-02-21T21:58:42Z [INFO] Org 123: IAM policy
+2026-02-21T21:58:42Z [INFO] Org 123: org policy constraints
+2026-02-21T21:58:42Z [INFO] Org 123: org policy effective (best-effort)
+2026-02-21T21:58:42Z [WARN] Command failed (attempt 1/2, exit=0). Retrying in 1s: gcloud org-policies describe constraints/iam.disableServiceAccountKeyCreation --format=json --organization=123 --effective
+2026-02-21T21:58:43Z [INFO] Project proj-root: enabled apis
+2026-02-21T21:58:43Z [INFO] Project proj-root: asset inventory
+2026-02-21T21:58:43Z [INFO] Project proj-root: IAM policy
+2026-02-21T21:58:43Z [INFO] Project proj-root: billing
+2026-02-21T21:58:43Z [INFO] Project proj-root: org policies
+2026-02-21T21:58:43Z [WARN] Command failed (attempt 1/2, exit=0). Retrying in 1s: gcloud org-policies describe constraints/iam.disableServiceAccountKeyCreation --format=json --project=proj-root --effective
+2026-02-21T21:58:44Z [INFO] Aggregating enabled apis (org)
+2026-02-21T21:58:44Z [INFO] Aggregating asset inventory (org)
+2026-02-21T21:58:44Z [INFO] Aggregating billing (org)
+2026-02-21T21:58:44Z [INFO] Normalizing IAM view (org)
+2026-02-21T21:58:44Z [INFO] Audit complete.

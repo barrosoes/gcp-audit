@@ -1,0 +1,8 @@
+{
+  "billingDisabledProjects": [],
+  "byBillingAccount": {
+    "billingAccounts/AAAAAA-BBBBBB-CCCCCC": [
+      "proj-root"
+    ]
+  }
+}

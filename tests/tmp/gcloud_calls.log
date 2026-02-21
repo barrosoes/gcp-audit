@@ -1,0 +1,32 @@
+gcloud config get-value account
+gcloud --version
+gcloud config get-value account
+gcloud config get-value project
+gcloud --version
+gcloud resource-manager folders list --organization=123 --format=json
+gcloud projects list --filter=parent.type=organization parent.id=123 --format=json
+gcloud services list --enabled --project proj-root --format=json
+gcloud organizations describe 123 --format=json
+gcloud resource-manager folders list --organization=123 --format=json
+gcloud projects list --filter=parent.type=organization parent.id=123 --format=json
+gcloud asset search-all-resources --scope=organizations/123 --limit=1 --format=json
+gcloud services list --enabled --project proj-root --format=json
+gcloud projects get-iam-policy proj-root --format=json
+gcloud billing projects describe proj-root --format=json
+gcloud organizations get-iam-policy 123 --format=json
+gcloud org-policies list --organization=123 --format=json
+gcloud org-policies list-constraints --organization=123 --format=json
+gcloud org-policies list --format=json --organization=123
+gcloud org-policies describe --help
+gcloud org-policies describe constraints/compute.disableSerialPortAccess --format=json --organization=123 --effective
+gcloud org-policies describe constraints/iam.disableServiceAccountKeyCreation --format=json --organization=123 --effective
+gcloud org-policies describe constraints/iam.disableServiceAccountKeyCreation --format=json --organization=123 --effective
+gcloud services list --enabled --project proj-root --format=json
+gcloud asset search-all-resources --scope=projects/proj-root --format=json
+gcloud projects get-iam-policy proj-root --format=json
+gcloud billing projects describe proj-root --format=json
+gcloud org-policies list --format=json --project=proj-root
+gcloud org-policies describe --help
+gcloud org-policies describe constraints/compute.disableSerialPortAccess --format=json --project=proj-root --effective
+gcloud org-policies describe constraints/iam.disableServiceAccountKeyCreation --format=json --project=proj-root --effective
+gcloud org-policies describe constraints/iam.disableServiceAccountKeyCreation --format=json --project=proj-root --effective

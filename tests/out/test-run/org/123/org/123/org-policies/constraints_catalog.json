@@ -1,0 +1,8 @@
+[
+  {
+    "name": "constraints/compute.disableSerialPortAccess"
+  },
+  {
+    "name": "constraints/iam.disableServiceAccountKeyCreation"
+  }
+]

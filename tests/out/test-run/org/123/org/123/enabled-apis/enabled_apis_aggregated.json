@@ -1,0 +1,14 @@
+[
+  {
+    "api": "compute.googleapis.com",
+    "projects": [
+      "proj-root"
+    ]
+  },
+  {
+    "api": "iam.googleapis.com",
+    "projects": [
+      "proj-root"
+    ]
+  }
+]

@@ -1,0 +1,11 @@
+[
+  {
+    "projectId": "proj-root",
+    "resources": [
+      {
+        "assetType": "compute.googleapis.com/Instance",
+        "name": "//compute.googleapis.com/projects/proj-root/zones/us-central1-a/instances/i-1"
+      }
+    ]
+  }
+]

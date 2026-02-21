@@ -1,0 +1,4 @@
+{
+  "constraint": "constraints/compute.disableSerialPortAccess",
+  "inheritFromParent": true
+}

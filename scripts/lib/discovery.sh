@@ -6,23 +6,22 @@ _py_ids_from_gcloud_list() {
   # Reads JSON array from stdin and prints IDs one per line.
   # For folders: expects `name` like "folders/123" or `folderId`.
   # For projects: expects `projectId`.
-  python3 - <<'PY'
-import json, sys, re
-data = json.load(sys.stdin)
-for item in data or []:
-    if isinstance(item, dict):
-        if "projectId" in item and item["projectId"]:
-            print(item["projectId"])
-            continue
-        name = item.get("name") or ""
-        m = re.match(r"folders/(\d+)$", name)
-        if m:
-            print(m.group(1))
-            continue
-        fid = item.get("folderId")
-        if fid:
-            print(fid)
-PY
+  python3 -c 'import json,sys,re
+data=json.load(sys.stdin)
+for item in (data or []):
+  if not isinstance(item, dict):
+    continue
+  pid=item.get("projectId")
+  if pid:
+    print(pid); continue
+  name=item.get("name") or ""
+  m=re.match(r"folders/(\\d+)$", name)
+  if m:
+    print(m.group(1)); continue
+  fid=item.get("folderId")
+  if fid:
+    print(fid)
+'
 }
 
 discover_folders_recursive() {
@@ -66,12 +65,11 @@ discover_folders_recursive() {
       continue
     fi
 
-    printf '%s\n' "$raw" | python3 - <<'PY' >>"$combined"
-import json, sys
-data = json.load(sys.stdin)
-for item in data or []:
-    print(json.dumps(item, ensure_ascii=False))
-PY
+    printf '%s\n' "$raw" | python3 -c 'import json,sys
+data=json.load(sys.stdin)
+for item in (data or []):
+  print(json.dumps(item, ensure_ascii=False))
+' >>"$combined"
 
     while IFS= read -r fid; do
       [[ -z "$fid" ]] && continue

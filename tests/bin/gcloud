@@ -1,0 +1,269 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+FIXTURES_DIR="$ROOT_DIR/tests/fixtures"
+TMP_DIR="${GCLOUD_MOCK_TMP_DIR:-$ROOT_DIR/tests/tmp}"
+CALLS_LOG="$TMP_DIR/gcloud_calls.log"
+
+mkdir -p "$TMP_DIR"
+printf '%s\n' "gcloud $*" >>"$CALLS_LOG"
+
+json_from_fixture() {
+  local name="$1"
+  local path="$FIXTURES_DIR/$name"
+  if [[ ! -f "$path" ]]; then
+    echo "Fixture not found: $path" 1>&2
+    exit 3
+  fi
+  cat "$path"
+}
+
+flag_value() {
+  local flag="$1"; shift
+  local args=("$@")
+  local i=0
+  while (( i < ${#args[@]} )); do
+    if [[ "${args[$i]}" == "$flag" ]]; then
+      echo "${args[$((i+1))]:-}"
+      return 0
+    fi
+    if [[ "${args[$i]}" == "$flag="* ]]; then
+      echo "${args[$i]#${flag}=}"
+      return 0
+    fi
+    i=$((i+1))
+  done
+  return 1
+}
+
+has_flag() {
+  local flag="$1"; shift
+  local a
+  for a in "$@"; do
+    if [[ "$a" == "$flag" ]]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+strip_format_flags() {
+  local out=()
+  local skip_next=0
+  local a
+  for a in "$@"; do
+    if (( skip_next == 1 )); then
+      skip_next=0
+      continue
+    fi
+    case "$a" in
+      --format|--flatten|--filter|--limit) skip_next=1; continue ;;
+      --format=*|--flatten=*|--filter=*|--limit=*) continue ;;
+      *) out+=("$a") ;;
+    esac
+  done
+  printf '%s\n' "${out[@]}"
+}
+
+cmd="${1:-}"; shift || true
+
+case "$cmd" in
+  --version)
+    cat <<'EOF'
+Google Cloud SDK 999.0.0
+EOF
+    exit 0
+    ;;
+  config)
+    sub="${1:-}"; shift || true
+    if [[ "$sub" == "get-value" ]]; then
+      key="${1:-}"
+      case "$key" in
+        account) echo "auditor@example.com" ;;
+        project) echo "proj-a" ;;
+        *) echo "" ;;
+      esac
+      exit 0
+    fi
+    ;;
+  organizations)
+    sub="${1:-}"; shift || true
+    case "$sub" in
+      describe)
+        org_id="${1:-}"
+        echo "{\"name\":\"organizations/${org_id}\",\"displayName\":\"Test Org\"}"
+        exit 0
+        ;;
+      get-iam-policy)
+        org_id="${1:-}"
+        json_from_fixture "iam_org_${org_id}.json"
+        exit 0
+        ;;
+    esac
+    ;;
+  resource-manager)
+    sub="${1:-}"; shift || true
+    if [[ "$sub" == "folders" ]]; then
+      action="${1:-}"; shift || true
+      case "$action" in
+        list)
+          org_id="$(flag_value --organization "$@" || true)"
+          folder_id="$(flag_value --folder "$@" || true)"
+          if [[ -n "$org_id" ]]; then
+            json_from_fixture "folders_org_${org_id}.json"
+            exit 0
+          fi
+          if [[ -n "$folder_id" ]]; then
+            json_from_fixture "folders_folder_${folder_id}.json"
+            exit 0
+          fi
+          echo "[]"
+          exit 0
+          ;;
+        get-iam-policy)
+          folder_id="${1:-}"
+          json_from_fixture "iam_folder_${folder_id}.json"
+          exit 0
+          ;;
+      esac
+    fi
+    ;;
+  projects)
+    sub="${1:-}"; shift || true
+    case "$sub" in
+      list)
+        filter="$(flag_value --filter "$@" || true)"
+        if [[ "$filter" =~ parent.type=organization[[:space:]]parent.id=([0-9]+) ]]; then
+          org_id="${BASH_REMATCH[1]}"
+          json_from_fixture "projects_org_${org_id}.json"
+          exit 0
+        fi
+        if [[ "$filter" =~ parent.type=folder[[:space:]]parent.id=([0-9]+) ]]; then
+          folder_id="${BASH_REMATCH[1]}"
+          json_from_fixture "projects_folder_${folder_id}.json"
+          exit 0
+        fi
+        echo "[]"
+        exit 0
+        ;;
+      get-iam-policy)
+        project_id="${1:-}"
+        json_from_fixture "iam_project_${project_id}.json"
+        exit 0
+        ;;
+    esac
+    ;;
+  services)
+    sub="${1:-}"; shift || true
+    if [[ "$sub" == "list" ]]; then
+      project_id="$(flag_value --project "$@" || true)"
+      if [[ -z "$project_id" ]]; then
+        echo "[]"
+        exit 0
+      fi
+      json_from_fixture "enabled_services_${project_id}.json"
+      exit 0
+    fi
+    ;;
+  asset)
+    sub="${1:-}"; shift || true
+    if [[ "$sub" == "search-all-resources" ]]; then
+      scope="$(flag_value --scope "$@" || true)"
+      if [[ "$scope" =~ ^projects/([^/]+)$ ]]; then
+        project_id="${BASH_REMATCH[1]}"
+        json_from_fixture "asset_resources_${project_id}.json"
+        exit 0
+      fi
+      # org scope or unknown: return empty list
+      echo "[]"
+      exit 0
+    fi
+    ;;
+  billing)
+    sub="${1:-}"; shift || true
+    if [[ "$sub" == "projects" ]]; then
+      action="${1:-}"; shift || true
+      if [[ "$action" == "describe" ]]; then
+        project_id="${1:-}"
+        json_from_fixture "billing_${project_id}.json"
+        exit 0
+      fi
+    fi
+    ;;
+  beta)
+    sub="${1:-}"; shift || true
+    if [[ "$sub" == "billing" ]]; then
+      shift || true # projects
+      shift || true # describe
+      project_id="${1:-}"
+      json_from_fixture "billing_${project_id}.json"
+      exit 0
+    fi
+    ;;
+  org-policies)
+    sub="${1:-}"; shift || true
+    case "$sub" in
+      list)
+        org_id="$(flag_value --organization "$@" || true)"
+        folder_id="$(flag_value --folder "$@" || true)"
+        project_id="$(flag_value --project "$@" || true)"
+        if [[ -n "$org_id" ]]; then
+          json_from_fixture "org_policies_list_org_${org_id}.json"
+          exit 0
+        fi
+        if [[ -n "$folder_id" ]]; then
+          json_from_fixture "org_policies_list_folder_${folder_id}.json"
+          exit 0
+        fi
+        if [[ -n "$project_id" ]]; then
+          json_from_fixture "org_policies_list_project_${project_id}.json"
+          exit 0
+        fi
+        echo "[]"
+        exit 0
+        ;;
+      list-constraints)
+        org_id="$(flag_value --organization "$@" || true)"
+        if [[ -n "$org_id" ]]; then
+          json_from_fixture "org_policies_list_constraints_org_${org_id}.json"
+          exit 0
+        fi
+        echo "[]"
+        exit 0
+        ;;
+      describe)
+        if [[ "${1:-}" == "--help" ]]; then
+          cat <<'EOF'
+Usage: gcloud org-policies describe CONSTRAINT [--effective]
+EOF
+          exit 0
+        fi
+        constraint="${1:-}"; shift || true
+        org_id="$(flag_value --organization "$@" || true)"
+        folder_id="$(flag_value --folder "$@" || true)"
+        project_id="$(flag_value --project "$@" || true)"
+        constraint_safe="${constraint//\//_}"
+        if [[ -n "$org_id" ]]; then
+          json_from_fixture "org_policy_describe_org_${constraint_safe}.json"
+          exit 0
+        fi
+        if [[ -n "$folder_id" ]]; then
+          json_from_fixture "org_policy_describe_folder_${folder_id}_${constraint_safe}.json"
+          exit 0
+        fi
+        if [[ -n "$project_id" ]]; then
+          json_from_fixture "org_policy_describe_project_${project_id}_${constraint_safe}.json"
+          exit 0
+        fi
+        echo "{}"
+        exit 0
+        ;;
+    esac
+    ;;
+esac
+
+echo "Unsupported mock gcloud invocation: gcloud $cmd $*" 1>&2
+exit 2
+

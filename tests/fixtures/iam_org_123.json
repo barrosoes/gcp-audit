@@ -1,0 +1,6 @@
+{
+  "bindings": [
+    {"role":"roles/resourcemanager.organizationViewer","members":["user:auditor@example.com"]}
+  ]
+}
+

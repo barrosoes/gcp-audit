@@ -1,0 +1,22 @@
+[
+  {
+    "api": "cloudresourcemanager.googleapis.com",
+    "enabledOnSampleProject": false
+  },
+  {
+    "api": "cloudasset.googleapis.com",
+    "enabledOnSampleProject": false
+  },
+  {
+    "api": "serviceusage.googleapis.com",
+    "enabledOnSampleProject": false
+  },
+  {
+    "api": "orgpolicy.googleapis.com",
+    "enabledOnSampleProject": false
+  },
+  {
+    "api": "cloudbilling.googleapis.com",
+    "enabledOnSampleProject": false
+  }
+]

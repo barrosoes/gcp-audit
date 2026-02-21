@@ -114,6 +114,11 @@ preflight_gcloud() {
   require_cmd gcloud
   require_cmd python3
 
+  if [[ "${DRY_RUN:-0}" == "1" ]]; then
+    log_info "Dry-run enabled: skipping gcloud auth/account validation."
+    return 0
+  fi
+
   local account
   account="$(gcloud config get-value account 2>/dev/null || true)"
   if [[ -z "$account" || "$account" == "(unset)" ]]; then
@@ -176,7 +181,7 @@ for api in required:
     out.append({"api": api, "enabledOnSampleProject": api in enabled})
 with open(out_path, "w", encoding="utf-8") as f:
     json.dump(out, f, indent=2, sort_keys=True, ensure_ascii=False)
-    f.write("\\n")
+    f.write("\n")
 PY
 }
 
@@ -228,7 +233,10 @@ write_run_metadata() {
   python3 - <<'PY' "$out"
 import json, os, sys, subprocess, time
 out_path = sys.argv[1]
+dry_run = os.environ.get("DRY_RUN","0") == "1"
 def sh(cmd):
+    if dry_run:
+        return ""
     try:
         return subprocess.check_output(cmd, stderr=subprocess.DEVNULL, text=True).strip()
     except Exception:
@@ -258,7 +266,7 @@ meta = {
 }
 with open(out_path, "w", encoding="utf-8") as f:
     json.dump(meta, f, indent=2, sort_keys=True, ensure_ascii=False)
-    f.write("\\n")
+    f.write("\n")
 PY
 }
 
@@ -283,7 +291,7 @@ manifest = {
 }
 with open(out_path, "w", encoding="utf-8") as f:
     json.dump(manifest, f, indent=2, sort_keys=True, ensure_ascii=False)
-    f.write("\\n")
+    f.write("\n")
 PY
 }
 
@@ -326,7 +334,7 @@ for fid in sorted(nodes.keys()):
     out.append({**nodes[fid], "depth": max(d,0)})
 with open(out_path, "w", encoding="utf-8") as f:
     json.dump(out, f, indent=2, sort_keys=True, ensure_ascii=False)
-    f.write("\\n")
+    f.write("\n")
 PY
 }
 
@@ -436,7 +444,7 @@ for it in items:
 out = [dedup[k] for k in sorted(dedup.keys())]
 with open(out_path, "w", encoding="utf-8") as f:
     json.dump(out, f, indent=2, sort_keys=True, ensure_ascii=False)
-    f.write("\\n")
+    f.write("\n")
 PY
   fi
 

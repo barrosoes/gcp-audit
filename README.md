@@ -100,7 +100,9 @@ Arquivos e pastas principais:
 - `org/<ORG_ID>/` (nível org):
   - `iam/iam_policy.json`
   - `org-policies/constraints.json`, `org-policies/policies_set.json`, `org-policies/describe/*.json`
+  - `org-policies/constraints_catalog.json` (best-effort, quando `gcloud org-policies list-constraints` está disponível)
   - `enabled-apis/enabled_apis_aggregated.json`
+  - `enabled-apis/enabled_apis_by_project.json`
   - `asset-inventory/asset_inventory_aggregated.json`
   - `billing/billing_summary.json`
   - `errors.jsonl`
@@ -122,3 +124,25 @@ Arquivos e pastas principais:
 - Em Organizations grandes, o volume de dados e chamadas a APIs pode ser alto.
 - Use `--parallelism` com cuidado para evitar rate-limit.
 - Use filtros (`--include-*` / `--exclude-*`) para recortar escopo quando necessário.
+
+## Testes automatizados (pure bash, sem GCP real)
+
+Foi adicionada uma suíte de testes **“pure bash”** que roda o script usando um **`gcloud` mockado** (fixtures em JSON). Isso permite validar:
+
+- `--dry-run` realmente **não chama** `gcloud`
+- idempotência: segunda execução (mesmo `RUN_ID`/`OUT_DIR`) faz **menos chamadas** por causa de “skip existing” (sem `--force`)
+- geração dos agregados de APIs habilitadas (por API e por projeto)
+
+### Como executar
+
+```bash
+chmod +x tests/run.sh tests/bin/gcloud
+./tests/run.sh
+```
+
+### Estrutura dos testes
+
+- `tests/run.sh`: runner + asserts
+- `tests/bin/gcloud`: mock de `gcloud` que grava chamadas em `tests/tmp/gcloud_calls.log`
+- `tests/fixtures/*.json`: respostas “canned” usadas pelo mock
+- `tests/out/`: outputs do script gerados durante os testes

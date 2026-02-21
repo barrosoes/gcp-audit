@@ -1,0 +1,23 @@
+{
+  "dryRun": false,
+  "filters": {
+    "excludeFolders": "",
+    "excludeProjects": "",
+    "includeFolders": "",
+    "includeProjects": "",
+    "resourceTypes": ""
+  },
+  "force": false,
+  "gcloud": {
+    "account": "auditor@example.com",
+    "project": "proj-a",
+    "versionLine": "Google Cloud SDK 999.0.0"
+  },
+  "orgId": "123",
+  "outDir": "/home/barroso/Downloads/ESTUDOS-CLOUD-DEVOPS/ESTUDOS-KUBERNETS/DEVOPSGUIDE/gcp-audit/tests/out",
+  "parallelism": 1,
+  "runId": "test-run",
+  "timestamps": {
+    "startedAt": "2026-02-21T21:58:41Z"
+  }
+}

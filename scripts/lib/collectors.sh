@@ -5,18 +5,15 @@ set -euo pipefail
 _json_sort_list_by_key() {
   # Usage: _json_sort_list_by_key <key>
   local key="$1"
-  python3 - <<'PY' "$key"
-import json, sys
-key = sys.argv[1]
-data = json.load(sys.stdin) or []
+  python3 -c 'import json,sys
+key=sys.argv[1]
+data=json.load(sys.stdin) or []
 def k(x):
-    if isinstance(x, dict):
-        return str(x.get(key,""))
-    return ""
-data_sorted = sorted(data, key=k)
+  return str(x.get(key,"")) if isinstance(x, dict) else ""
+data_sorted=sorted(data, key=k)
 json.dump(data_sorted, sys.stdout, indent=2, sort_keys=True, ensure_ascii=False)
 sys.stdout.write("\n")
-PY
+' "$key"
 }
 
 _write_json_file_from_cmd() {
@@ -26,6 +23,11 @@ _write_json_file_from_cmd() {
   local scope_id="$1"; shift
   local capability="$1"; shift
   local errors_jsonl="$1"; shift
+
+  if [[ "${DRY_RUN:-0}" == "1" ]]; then
+    log_info "[dry-run] Would write $out from: $*"
+    return 0
+  fi
 
   if [[ -f "$out" && "${FORCE:-0}" != "1" ]]; then
     log_debug "Skip existing: $out"
@@ -115,7 +117,7 @@ for p in glob.glob(os.path.join(run_root, "projects", "*", "iam", "iam_policy.js
 
 with open(out_path, "w", encoding="utf-8") as f:
     json.dump(records, f, indent=2, sort_keys=True, ensure_ascii=False)
-    f.write("\\n")
+    f.write("\n")
 PY
 }
 
@@ -125,10 +127,21 @@ collect_enabled_apis_project() {
   local errors_jsonl="$3"
   ensure_dir "$out_dir"
 
+  local out_file="$out_dir/enabled_services.json"
+  if [[ -f "$out_file" && "${FORCE:-0}" != "1" ]]; then
+    log_debug "Skip existing: $out_file"
+    return 0
+  fi
+
+  if [[ "${DRY_RUN:-0}" == "1" ]]; then
+    log_info "[dry-run] Would list enabled services for project $project_id"
+    return 0
+  fi
+
   local tmp
   tmp="$(mktemp)"
   if gcloud services list --enabled --project "$project_id" --format=json >"$tmp" 2>/dev/null; then
-    cat "$tmp" | _json_sort_list_by_key "serviceName" >"$out_dir/enabled_services.json"
+    cat "$tmp" | _json_sort_list_by_key "serviceName" >"$out_file"
     rm -f "$tmp"
     return 0
   fi
@@ -144,25 +157,48 @@ aggregate_enabled_apis_org() {
   local out_dir="$2"
   ensure_dir "$out_dir"
 
-  python3 - <<'PY' "$run_root" "$out_dir/enabled_apis_aggregated.json"
+  local out_by_api="$out_dir/enabled_apis_aggregated.json"
+  local out_by_project="$out_dir/enabled_apis_by_project.json"
+
+  if [[ -f "$out_by_api" && -f "$out_by_project" && "${FORCE:-0}" != "1" ]]; then
+    log_debug "Skip existing: $out_by_api and $out_by_project"
+    return 0
+  fi
+
+  if [[ "${DRY_RUN:-0}" == "1" ]]; then
+    log_info "[dry-run] Would aggregate enabled apis (by API and by project)"
+    return 0
+  fi
+
+  python3 - <<'PY' "$run_root" "$out_by_api" "$out_by_project"
 import glob, json, os, sys
-run_root, out_path = sys.argv[1], sys.argv[2]
-agg = {}
+run_root, out_by_api, out_by_project = sys.argv[1], sys.argv[2], sys.argv[3]
+by_api = {}
+by_project = {}
 for p in glob.glob(os.path.join(run_root, "projects", "*", "enabled-apis", "enabled_services.json")):
     project_id = os.path.basename(os.path.dirname(os.path.dirname(p)))
     try:
         data = json.load(open(p, "r", encoding="utf-8")) or []
     except Exception:
         continue
+    svcs = []
     for svc in data:
         name = svc.get("serviceName") or svc.get("name") or ""
         if not name:
             continue
-        agg.setdefault(name, []).append(project_id)
-out = [{"api": k, "projects": sorted(set(v))} for k,v in sorted(agg.items())]
-with open(out_path, "w", encoding="utf-8") as f:
-    json.dump(out, f, indent=2, sort_keys=True, ensure_ascii=False)
-    f.write("\\n")
+        by_api.setdefault(name, []).append(project_id)
+        svcs.append(name)
+    by_project[project_id] = sorted(set(svcs))
+
+out_api = [{"api": k, "projects": sorted(set(v))} for k,v in sorted(by_api.items())]
+with open(out_by_api, "w", encoding="utf-8") as f:
+    json.dump(out_api, f, indent=2, sort_keys=True, ensure_ascii=False)
+    f.write("\n")
+
+out_proj = [{"projectId": k, "apis": v} for k,v in sorted(by_project.items())]
+with open(out_by_project, "w", encoding="utf-8") as f:
+    json.dump(out_proj, f, indent=2, sort_keys=True, ensure_ascii=False)
+    f.write("\n")
 PY
 }
 
@@ -175,6 +211,17 @@ collect_asset_inventory_project() {
   local resource_types_csv="${4:-}"
   ensure_dir "$out_dir"
 
+  local out_file="$out_dir/resources.json"
+  if [[ -f "$out_file" && "${FORCE:-0}" != "1" ]]; then
+    log_debug "Skip existing: $out_file"
+    return 0
+  fi
+
+  if [[ "${DRY_RUN:-0}" == "1" ]]; then
+    log_info "[dry-run] Would collect CAI inventory for project $project_id"
+    return 0
+  fi
+
   local args=(asset search-all-resources "--scope=projects/${project_id}" "--format=json")
   if [[ -n "$resource_types_csv" ]]; then
     args+=("--asset-types=$resource_types_csv")
@@ -183,7 +230,7 @@ collect_asset_inventory_project() {
   local tmp
   tmp="$(mktemp)"
   if run_with_retries 3 gcloud "${args[@]}" >"$tmp" 2>/dev/null; then
-    cat "$tmp" | _json_sort_list_by_key "name" >"$out_dir/resources.json"
+    cat "$tmp" | _json_sort_list_by_key "name" >"$out_file"
     rm -f "$tmp"
     return 0
   fi
@@ -199,6 +246,16 @@ aggregate_asset_inventory_org() {
   local out_path="$2"
   ensure_dir "$(dirname "$out_path")"
 
+  if [[ -f "$out_path" && "${FORCE:-0}" != "1" ]]; then
+    log_debug "Skip existing: $out_path"
+    return 0
+  fi
+
+  if [[ "${DRY_RUN:-0}" == "1" ]]; then
+    log_info "[dry-run] Would aggregate asset inventory (org)"
+    return 0
+  fi
+
   python3 - <<'PY' "$run_root" "$out_path"
 import glob, json, os, sys
 run_root, out_path = sys.argv[1], sys.argv[2]
@@ -213,7 +270,7 @@ for p in glob.glob(os.path.join(run_root, "projects", "*", "asset-inventory", "r
 out = sorted(out, key=lambda x: x.get("projectId",""))
 with open(out_path, "w", encoding="utf-8") as f:
     json.dump(out, f, indent=2, sort_keys=True, ensure_ascii=False)
-    f.write("\\n")
+    f.write("\n")
 PY
 }
 
@@ -224,17 +281,28 @@ collect_billing_project() {
   local errors_jsonl="$3"
   ensure_dir "$out_dir"
 
+  local out_file="$out_dir/billing.json"
+  if [[ -f "$out_file" && "${FORCE:-0}" != "1" ]]; then
+    log_debug "Skip existing: $out_file"
+    return 0
+  fi
+
+  if [[ "${DRY_RUN:-0}" == "1" ]]; then
+    log_info "[dry-run] Would describe billing for project $project_id"
+    return 0
+  fi
+
   local tmp
   tmp="$(mktemp)"
 
   if gcloud billing projects describe "$project_id" --format=json >"$tmp" 2>/dev/null; then
-    cat "$tmp" | python3 -m json.tool >"$out_dir/billing.json" 2>/dev/null || cat "$tmp" >"$out_dir/billing.json"
+    cat "$tmp" | python3 -m json.tool >"$out_file" 2>/dev/null || cat "$tmp" >"$out_file"
     rm -f "$tmp"
     return 0
   fi
 
   if gcloud beta billing projects describe "$project_id" --format=json >"$tmp" 2>/dev/null; then
-    cat "$tmp" | python3 -m json.tool >"$out_dir/billing.json" 2>/dev/null || cat "$tmp" >"$out_dir/billing.json"
+    cat "$tmp" | python3 -m json.tool >"$out_file" 2>/dev/null || cat "$tmp" >"$out_file"
     rm -f "$tmp"
     return 0
   fi
@@ -250,6 +318,17 @@ aggregate_billing_org() {
   local run_root="$1"
   local out_path="$2"
   ensure_dir "$(dirname "$out_path")"
+
+  if [[ -f "$out_path" && "${FORCE:-0}" != "1" ]]; then
+    log_debug "Skip existing: $out_path"
+    return 0
+  fi
+
+  if [[ "${DRY_RUN:-0}" == "1" ]]; then
+    log_info "[dry-run] Would aggregate billing (org)"
+    return 0
+  fi
+
   python3 - <<'PY' "$run_root" "$out_path"
 import glob, json, os, sys
 run_root, out_path = sys.argv[1], sys.argv[2]
@@ -273,7 +352,7 @@ out = {
 }
 with open(out_path, "w", encoding="utf-8") as f:
     json.dump(out, f, indent=2, sort_keys=True, ensure_ascii=False)
-    f.write("\\n")
+    f.write("\n")
 PY
 }
 
@@ -284,17 +363,44 @@ collect_org_policy_constraints_org() {
   local errors_jsonl="$3"
   ensure_dir "$out_dir"
 
+  local out_file="$out_dir/constraints.json"
+  local out_catalog="$out_dir/constraints_catalog.json"
+
+  if [[ -f "$out_file" && -f "$out_catalog" && "${FORCE:-0}" != "1" ]]; then
+    log_debug "Skip existing: $out_file and $out_catalog"
+    return 0
+  fi
+
+  if [[ "${DRY_RUN:-0}" == "1" ]]; then
+    log_info "[dry-run] Would list org policy constraints/policies for org $org_id"
+    return 0
+  fi
+
   local tmp
   tmp="$(mktemp)"
   if gcloud org-policies list --organization="$org_id" --format=json >"$tmp" 2>/dev/null; then
-    cat "$tmp" | _json_sort_list_by_key "constraint" >"$out_dir/constraints.json"
+    cat "$tmp" | _json_sort_list_by_key "constraint" >"$out_file"
     rm -f "$tmp"
+  else
+    local ec=$?
+    rm -f "$tmp"
+    append_error_jsonl "$errors_jsonl" "org" "$org_id" "org-policy-audit" "Org policies list failed (exit=$ec)"
+  fi
+  rm -f "$tmp"
+
+  # Best-effort: attempt to list constraint catalog/definitions (gcloud support varies).
+  if [[ -f "$out_catalog" && "${FORCE:-0}" != "1" ]]; then
     return 0
   fi
-  local ec=$?
+  tmp="$(mktemp)"
+  if gcloud org-policies list-constraints --organization="$org_id" --format=json >"$tmp" 2>/dev/null; then
+    cat "$tmp" | _json_sort_list_by_key "name" >"$out_catalog"
+  elif gcloud org-policies list-constraints --format=json >"$tmp" 2>/dev/null; then
+    cat "$tmp" | _json_sort_list_by_key "name" >"$out_catalog"
+  else
+    append_error_jsonl "$errors_jsonl" "org" "$org_id" "org-policy-audit" "Org policy constraint catalog not available via gcloud (list-constraints unsupported or denied)"
+  fi
   rm -f "$tmp"
-  append_error_jsonl "$errors_jsonl" "org" "$org_id" "org-policy-audit" "Org policies list failed (exit=$ec)"
-  return 0
 }
 
 collect_org_policies_scope_effective() {
@@ -308,6 +414,11 @@ collect_org_policies_scope_effective() {
 
   ensure_dir "$out_dir"
 
+  if [[ "${DRY_RUN:-0}" == "1" ]]; then
+    log_info "[dry-run] Would collect org policies for $scope_type $scope_id"
+    return 0
+  fi
+
   local list_args=(org-policies list "--format=json")
   case "$scope_type" in
     org) list_args+=("--organization=$scope_id") ;;
@@ -318,8 +429,11 @@ collect_org_policies_scope_effective() {
 
   local tmp
   tmp="$(mktemp)"
-  if gcloud "${list_args[@]}" >"$tmp" 2>/dev/null; then
-    cat "$tmp" | _json_sort_list_by_key "constraint" >"$out_dir/policies_set.json"
+  local policies_set="$out_dir/policies_set.json"
+  if [[ -f "$policies_set" && "${FORCE:-0}" != "1" ]]; then
+    log_debug "Skip existing: $policies_set"
+  elif gcloud "${list_args[@]}" >"$tmp" 2>/dev/null; then
+    cat "$tmp" | _json_sort_list_by_key "constraint" >"$policies_set"
   else
     local ec=$?
     append_error_jsonl "$errors_jsonl" "$scope_type" "$scope_id" "org-policy-audit" "Org policies list failed for scope (exit=$ec)"
@@ -335,13 +449,16 @@ collect_org_policies_scope_effective() {
     effective_supported=1
   fi
 
-  python3 - <<'PY' "$constraints_json" >"$out_dir/constraints_ids.txt"
+  local constraints_ids="$out_dir/constraints_ids.txt"
+  if [[ ! -f "$constraints_ids" || "${FORCE:-0}" == "1" ]]; then
+    python3 - <<'PY' "$constraints_json" >"$constraints_ids"
 import json, sys
 data = json.load(open(sys.argv[1], "r", encoding="utf-8")) or []
 for item in data:
     c = item.get("constraint")
     if c: print(c)
 PY
+  fi
 
   local constraint
   while IFS= read -r constraint; do
@@ -366,7 +483,7 @@ PY
         write_json_pretty "$out_file" "$raw"
       fi
     fi
-  done <"$out_dir/constraints_ids.txt"
+  done <"$constraints_ids"
 
   # Build inheritance/override summary (best-effort) with parent references.
   if [[ -n "${RUN_ROOT:-}" && -n "${ORG_ID:-}" ]]; then
@@ -446,7 +563,7 @@ for fp in files:
 out_path = os.path.join(out_dir, "inheritance_summary.json")
 with open(out_path, "w", encoding="utf-8") as f:
     json.dump(summary, f, indent=2, sort_keys=True, ensure_ascii=False)
-    f.write("\\n")
+    f.write("\n")
 PY
   fi
 }

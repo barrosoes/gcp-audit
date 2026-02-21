@@ -1,0 +1,16 @@
+[
+  {
+    "member": "user:auditor@example.com",
+    "role": "roles/resourcemanager.organizationViewer",
+    "scopeId": "123",
+    "scopeType": "org",
+    "sourceFile": "org/123/iam/iam_policy.json"
+  },
+  {
+    "member": "user:auditor@example.com",
+    "role": "roles/viewer",
+    "scopeId": "proj-root",
+    "scopeType": "project",
+    "sourceFile": "projects/proj-root/iam/iam_policy.json"
+  }
+]

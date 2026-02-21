@@ -1,0 +1,10 @@
+{
+  "bindings": [
+    {
+      "members": [
+        "user:auditor@example.com"
+      ],
+      "role": "roles/viewer"
+    }
+  ]
+}

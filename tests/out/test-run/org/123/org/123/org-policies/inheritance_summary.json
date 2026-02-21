@@ -1,0 +1,9 @@
+[
+  {
+    "constraint": "constraints/compute.disableSerialPortAccess",
+    "effectivePolicyFile": "org/123/org-policies/describe/constraints_compute.disableSerialPortAccess.json",
+    "inheritFromParent": true,
+    "scopeId": "123",
+    "scopeType": "org"
+  }
+]
