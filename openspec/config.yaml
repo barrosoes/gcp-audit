@@ -1,0 +1,42 @@
+schema: spec-driven
+
+# Project context (optional)
+# This is shown to AI when creating artifacts.
+# Add your tech stack, conventions, style guides, domain knowledge, etc.
+# Example:
+#   context: |
+#     Tech stack: TypeScript, React, Node.js
+#     We use conventional commits
+#     Domain: e-commerce platform
+
+context: |
+  Gere um script enterprise para auditoria completa que varre a Organization inteira do Google Cloud Platform.
+  O script deve ser escrito em bash e pensado para execução no Cloud Shell usando `gcloud`.
+  Ele deve executar auditorias de segurança na Organization principal, descobrindo de forma automática e recursiva:
+  - folders
+  - projetos
+  - recursos e subrecursos
+
+  Use o Cloud Asset Inventory corretamente quando necessário.
+
+  Entregas esperadas:
+  - Script único (bash)
+  - Extração por Organization
+  - Descoberta automática de folders
+  - Descoberta automática de todos os projetos
+  - Inventário de recursos (Cloud Asset)
+  - IAM (org, folder, project)
+  - APIs habilitadas
+  - Org Policies
+  - Billing
+  - Estrutura organizada em pastas
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+#   rules:
+#     proposal:
+#       - Keep proposals under 500 words
+#       - Always include a "Non-goals" section
+#     tasks:
+#       - Break tasks into chunks of max 2 hours
